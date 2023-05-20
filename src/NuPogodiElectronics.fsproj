@@ -7,6 +7,7 @@
     <RemoveDir Directories="$(BaseIntermediateOutputPath)" />
   </Target>
   <ItemGroup>
+    <Compile Include="Browser.XmlDom.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
 	<Import Project="..\.paket\Paket.Restore.targets" />
