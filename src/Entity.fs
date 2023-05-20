@@ -16,7 +16,7 @@ type EggGutter =
 module EggGutter =
     let all =
         // System.Enum.GetValues<EggGutter>() // error in Fable 4.1.3
-        System.Enum.GetValues(typeof<EggGutter>) :?> EggGutter array // System.Collections.Generic.
+        System.Enum.GetValues(typeof<EggGutter>) :?> EggGutter array
 
 type Egg =
     {

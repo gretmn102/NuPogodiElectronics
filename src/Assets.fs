@@ -3,14 +3,16 @@ open Browser.Types
 
 type Sprite =
     {
+        Id: string
         SvgElement: SVGElement
         IsHidden: bool
     }
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module Sprite =
-    let create svg =
+    let create (svg: SVGElement) =
         {
+            Id = svg.getAttribute("inkscape:label")
             SvgElement = svg
             IsHidden =
                 match svg.getAttribute("visibility") with
@@ -32,6 +34,113 @@ module Sprite =
             { sprite with IsHidden = false }
         else
             sprite
+
+type SegmentDisplay =
+    | None = 0
+    | Top = 1
+    | LeftTop = 2
+    | RightTop = 4
+    | Middle = 8
+    | LeftBottom = 16
+    | RightBottom = 32
+    | Bottom = 64
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module SegmentDisplay =
+    let all =
+        System.Enum.GetValues(typeof<SegmentDisplay>) :?> SegmentDisplay array
+
+    let allExceptNone =
+            all
+            |> Array.filter (fun x -> x <> SegmentDisplay.None)
+
+    let ofDigit n =
+        match n with
+        | 0 ->
+            SegmentDisplay.Top
+            ||| SegmentDisplay.LeftTop
+            ||| SegmentDisplay.RightTop
+            ||| SegmentDisplay.LeftBottom
+            ||| SegmentDisplay.RightBottom
+            ||| SegmentDisplay.Bottom
+        | 1 ->
+            SegmentDisplay.RightTop
+            ||| SegmentDisplay.RightBottom
+        | 2 ->
+            SegmentDisplay.Top
+            ||| SegmentDisplay.RightTop
+            ||| SegmentDisplay.Middle
+            ||| SegmentDisplay.LeftBottom
+            ||| SegmentDisplay.Bottom
+        | 3 ->
+            SegmentDisplay.Top
+            ||| SegmentDisplay.RightTop
+            ||| SegmentDisplay.Middle
+            ||| SegmentDisplay.RightBottom
+            ||| SegmentDisplay.Bottom
+        | 4 ->
+            SegmentDisplay.LeftTop
+            ||| SegmentDisplay.RightTop
+            ||| SegmentDisplay.Middle
+            ||| SegmentDisplay.RightBottom
+        | 5 ->
+            SegmentDisplay.Top
+            ||| SegmentDisplay.LeftTop
+            ||| SegmentDisplay.Middle
+            ||| SegmentDisplay.RightBottom
+            ||| SegmentDisplay.Bottom
+        | 6 ->
+            SegmentDisplay.Top
+            ||| SegmentDisplay.LeftTop
+            ||| SegmentDisplay.Middle
+            ||| SegmentDisplay.LeftBottom
+            ||| SegmentDisplay.RightBottom
+            ||| SegmentDisplay.Bottom
+        | 7 ->
+            SegmentDisplay.Top
+            ||| SegmentDisplay.RightTop
+            ||| SegmentDisplay.RightBottom
+        | 8 ->
+            SegmentDisplay.Top
+            ||| SegmentDisplay.LeftTop
+            ||| SegmentDisplay.RightTop
+            ||| SegmentDisplay.Middle
+            ||| SegmentDisplay.LeftBottom
+            ||| SegmentDisplay.RightBottom
+            ||| SegmentDisplay.Bottom
+        | 9 ->
+            SegmentDisplay.Top
+            ||| SegmentDisplay.LeftTop
+            ||| SegmentDisplay.RightTop
+            ||| SegmentDisplay.Middle
+            ||| SegmentDisplay.RightBottom
+            ||| SegmentDisplay.Bottom
+        | _ ->
+            SegmentDisplay.None
+
+    let toAssetName (sd: SegmentDisplay) =
+        match sd with
+        | SegmentDisplay.Top -> "top"
+        | SegmentDisplay.LeftTop -> "leftTop"
+        | SegmentDisplay.RightTop -> "rightTop"
+        | SegmentDisplay.Middle -> "middle"
+        | SegmentDisplay.LeftBottom -> "leftBottom"
+        | SegmentDisplay.RightBottom -> "rightBottom"
+        | SegmentDisplay.Bottom -> "bottom"
+        | x ->
+            failwithf "not found asset name for %A" x
+
+    let toAssetNames (sd: SegmentDisplay) =
+        let test t =
+            sd &&& t = t
+
+        allExceptNone
+        |> Array.choose (fun x ->
+            if test x then
+                Some (toAssetName x)
+            else
+                None
+        )
 
 [<RequireQualifiedAccess>]
 type Asset =
@@ -63,6 +172,17 @@ module Asset =
                 Asset.Node (fn x)
         loop asset
 
+    let updateGroup assetName updating = function
+        | Asset.Group group ->
+            let asset =
+                Map.find assetName group
+                |> updating
+
+            Map.add assetName asset group
+            |> Asset.Group
+        | x ->
+            failwithf "expected group in \"%s\" asset id but `%A`" assetName x
+
 module AssetLabels =
     let rec rightTopEggs = nameof rightTopEggs
     let rec rightBottomEggs = nameof rightBottomEggs
@@ -76,6 +196,10 @@ module AssetLabels =
     let rec rightWolfBottomHand = nameof rightWolfBottomHand
     let rec rightBrokenEgg = nameof rightBrokenEgg
     let rec leftBrokenEgg = nameof leftBrokenEgg
+    let rec digit1 = nameof digit1
+    let rec digit2 = nameof digit2
+    let rec digit3 = nameof digit3
+    let rec digit4 = nameof digit4
 
 type AssetsManager =
     {
@@ -112,6 +236,19 @@ module AssetsManager =
             let x = findByLabel name root
             name, Asset.Node (Sprite.create x)
 
+        let loadSegmentDisplay groupName =
+            let group = findByLabel groupName root
+            let group =
+                SegmentDisplay.allExceptNone
+                |> Array.map (fun x ->
+                    let id = SegmentDisplay.toAssetName x
+                    findByLabel id group
+                    |> Sprite.create
+                    |> fun sprite -> id, Asset.Node sprite
+                )
+                |> Map.ofArray
+            groupName, Asset.Group group
+
         {
             Root = root
             Container =
@@ -128,6 +265,10 @@ module AssetsManager =
                     load AssetLabels.rightWolfBottomHand
                     load AssetLabels.leftBrokenEgg
                     load AssetLabels.rightBrokenEgg
+                    loadSegmentDisplay AssetLabels.digit1
+                    loadSegmentDisplay AssetLabels.digit2
+                    loadSegmentDisplay AssetLabels.digit3
+                    loadSegmentDisplay AssetLabels.digit4
                 ]
                 |> Map.ofList
         }
@@ -149,3 +290,11 @@ module AssetsManager =
             Container =
                 Map.add id x assetsManager.Container
         }
+
+    let update assetLabel updating assetsManager =
+        match tryFind assetLabel assetsManager with
+        | Some asset ->
+            let asset = updating asset
+            add assetLabel asset assetsManager
+        | x ->
+            failwithf "expected `Some _` but `%A`" x
