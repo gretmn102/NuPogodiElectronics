@@ -34,20 +34,26 @@ module Egg =
             Pos = egg.Pos + 1
         }
 
-type WolfPos =
+type WolfBodyPos =
     | Left = 0
     | Right = 1
 
+type WolfHandPos =
+    | Top = 0
+    | Bottom = 1
+
 type Wolf =
     {
-        WolfPos: WolfPos
+        BodyPos: WolfBodyPos
+        HandPos: WolfHandPos
     }
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module Wolf =
     let create () =
         {
-            WolfPos = WolfPos.Left
+            BodyPos = WolfBodyPos.Left
+            HandPos = WolfHandPos.Top
         }
 
 type State =
@@ -137,6 +143,10 @@ module AssetLabels =
     let rec leftBottomEggs = nameof leftBottomEggs
     let rec leftWolf = nameof leftWolf
     let rec rightWolf = nameof rightWolf
+    let rec leftWolfTopHand = nameof leftWolfTopHand
+    let rec leftWolfBottomHand = nameof leftWolfBottomHand
+    let rec rightWolfTopHand = nameof rightWolfTopHand
+    let rec rightWolfBottomHand = nameof rightWolfBottomHand
 
 type AssetsManager =
     {
@@ -169,7 +179,7 @@ module AssetsManager =
                 |> Map.ofList
             groupName, Asset.Group group
 
-        let loadWolf name =
+        let load name =
             let x = findByLabel name root
             name, Asset.Node (Sprite.create x)
 
@@ -181,8 +191,12 @@ module AssetsManager =
                     loadEggs AssetLabels.rightBottomEggs
                     loadEggs AssetLabels.leftTopEggs
                     loadEggs AssetLabels.leftBottomEggs
-                    loadWolf AssetLabels.leftWolf
-                    loadWolf AssetLabels.rightWolf
+                    load AssetLabels.leftWolf
+                    load AssetLabels.rightWolf
+                    load AssetLabels.leftWolfTopHand
+                    load AssetLabels.leftWolfBottomHand
+                    load AssetLabels.rightWolfTopHand
+                    load AssetLabels.rightWolfBottomHand
                 ]
                 |> Map.ofList
         }
@@ -205,24 +219,44 @@ module AssetsManager =
                 Map.add id x assetsManager.Container
         }
 
-let updateInputPlayer (state: State) =
-    let pos =
-        if Joystick.isLeft then
-            Some WolfPos.Left
-        elif Joystick.isRight then
-            Some WolfPos.Right
-        else
-            None
+let updatePlayerInput (state: State) =
+    let wolf = state.Wolf
 
-    match pos with
-    | None -> state
-    | Some pos ->
-        { state with
-            Wolf =
-                { state.Wolf with
-                    WolfPos = pos
-                }
-        }
+    let wolf =
+        if Joystick.isLeft then
+            { wolf with
+                BodyPos = WolfBodyPos.Left
+            }
+        else
+            wolf
+
+    let wolf =
+        if Joystick.isRight then
+            { wolf with
+                BodyPos = WolfBodyPos.Right
+            }
+        else
+            wolf
+
+    let wolf =
+        if Joystick.isUp then
+            { wolf with
+                HandPos = WolfHandPos.Top
+            }
+        else
+            wolf
+
+    let wolf =
+        if Joystick.isDown then
+            { wolf with
+                HandPos = WolfHandPos.Bottom
+            }
+        else
+            wolf
+
+    { state with
+        Wolf = wolf
+    }
 
 let updateGraphics (assetsManager: AssetsManager) (state: State) =
     let assetsManager = AssetsManager.hideAll assetsManager
@@ -253,11 +287,32 @@ let updateGraphics (assetsManager: AssetsManager) (state: State) =
 
     let assetsManager =
         let assetLabel =
-            match state.Wolf.WolfPos with
-            | WolfPos.Left ->
+            match state.Wolf.BodyPos with
+            | WolfBodyPos.Left ->
                 AssetLabels.leftWolf
-            | WolfPos.Right ->
+            | WolfBodyPos.Right ->
                 AssetLabels.rightWolf
+            | x -> failwithf "expected `WolfPos.Left` or `WolfPos.Right` but `%A`" x
+
+        match AssetsManager.tryFind assetLabel assetsManager with
+        | Some (Asset.Node x) ->
+            let x = Asset.Node (Sprite.visible x)
+            AssetsManager.add assetLabel x assetsManager
+        | x ->
+            failwithf "expected `Some (Asset.Node x)` but `%A`" x
+
+    let assetsManager =
+        let assetLabel =
+            let wolf = state.Wolf
+            match wolf.BodyPos, wolf.HandPos with
+            | WolfBodyPos.Left, WolfHandPos.Top ->
+                AssetLabels.leftWolfTopHand
+            | WolfBodyPos.Left, WolfHandPos.Bottom ->
+                AssetLabels.leftWolfBottomHand
+            | WolfBodyPos.Right, WolfHandPos.Top ->
+                AssetLabels.rightWolfTopHand
+            | WolfBodyPos.Right, WolfHandPos.Bottom ->
+                AssetLabels.rightWolfBottomHand
             | x -> failwithf "expected `WolfPos.Left` or `WolfPos.Right` but `%A`" x
 
         match AssetsManager.tryFind assetLabel assetsManager with
@@ -318,7 +373,7 @@ let updatePhysics (dt: float) (state: State) =
 
 let update (dt: float) (assetsManager: AssetsManager) (state: State) =
     state
-    |> updateInputPlayer
+    |> updatePlayerInput
     |> updatePhysics dt
     |> updateGraphics assetsManager
 
