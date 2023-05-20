@@ -1,6 +1,7 @@
 {
   "private": true,
   "scripts": {
+    "rmdir": "node -e \"var fs = require('fs');process.argv.slice(1).map((fpath)=>{ try {fs.rmdirSync(fpath,{recursive: true})} catch(e){console.warn('Error folder:', fpath, e)}});process.exit(0);\"",
     "dotnet:install": "dotnet tool restore && dotnet paket install",
     "dotnet:clean": "dotnet clean",
     "postinstall": "npm run dotnet:install",
@@ -9,10 +10,12 @@
     "vite:watch": "vite",
     "vite:build": "vite build",
     "dev": "concurrently \"npm:*:watch\"",
-    "deploy": "npm run fable:build && npm run vite:build"
+    "deploy": "npm run rmdir -- deploy && npm run fable:build && npm run vite:build",
+    "deploy:github": "npm run deploy && gh-pages -d deploy"
   },
   "devDependencies": {
     "concurrently": "^8.0.1",
+    "gh-pages": "^5.0.0",
     "vite": "^4.3.5"
   },
   "dependencies": {
