@@ -34,9 +34,26 @@ module Egg =
             Pos = egg.Pos + 1
         }
 
+type WolfPos =
+    | Left = 0
+    | Right = 1
+
+type Wolf =
+    {
+        WolfPos: WolfPos
+    }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module Wolf =
+    let create () =
+        {
+            WolfPos = WolfPos.Left
+        }
+
 type State =
     {
         Eggs: Map<EggId, Egg>
+        Wolf: Wolf
         Cooldown: float
         TimeAcc: float
     }
@@ -48,6 +65,7 @@ module State =
             Eggs = Map.empty
             Cooldown = 1000.0
             TimeAcc = 0.0
+            Wolf = Wolf.create ()
         }
 
 type Sprite =
@@ -117,6 +135,8 @@ module AssetLabels =
     let rec rightBottomEggs = nameof rightBottomEggs
     let rec leftTopEggs = nameof leftTopEggs
     let rec leftBottomEggs = nameof leftBottomEggs
+    let rec leftWolf = nameof leftWolf
+    let rec rightWolf = nameof rightWolf
 
 type AssetsManager =
     {
@@ -149,6 +169,10 @@ module AssetsManager =
                 |> Map.ofList
             groupName, Asset.Group group
 
+        let loadWolf name =
+            let x = findByLabel name root
+            name, Asset.Node (Sprite.create x)
+
         {
             Root = root
             Container =
@@ -157,6 +181,8 @@ module AssetsManager =
                     loadEggs AssetLabels.rightBottomEggs
                     loadEggs AssetLabels.leftTopEggs
                     loadEggs AssetLabels.leftBottomEggs
+                    loadWolf AssetLabels.leftWolf
+                    loadWolf AssetLabels.rightWolf
                 ]
                 |> Map.ofList
         }
@@ -179,6 +205,24 @@ module AssetsManager =
                 Map.add id x assetsManager.Container
         }
 
+let updateInputPlayer (state: State) =
+    let pos =
+        if Joystick.isLeft then
+            Some WolfPos.Left
+        elif Joystick.isRight then
+            Some WolfPos.Right
+        else
+            None
+
+    match pos with
+    | None -> state
+    | Some pos ->
+        { state with
+            Wolf =
+                { state.Wolf with
+                    WolfPos = pos
+                }
+        }
 
 let updateGraphics (assetsManager: AssetsManager) (state: State) =
     let assetsManager = AssetsManager.hideAll assetsManager
@@ -206,6 +250,22 @@ let updateGraphics (assetsManager: AssetsManager) (state: State) =
                     failwithf "expected `Some (Asset.Group group)` but `%A`" x
             )
             assetsManager
+
+    let assetsManager =
+        let assetLabel =
+            match state.Wolf.WolfPos with
+            | WolfPos.Left ->
+                AssetLabels.leftWolf
+            | WolfPos.Right ->
+                AssetLabels.rightWolf
+            | x -> failwithf "expected `WolfPos.Left` or `WolfPos.Right` but `%A`" x
+
+        match AssetsManager.tryFind assetLabel assetsManager with
+        | Some (Asset.Node x) ->
+            let x = Asset.Node (Sprite.visible x)
+            AssetsManager.add assetLabel x assetsManager
+        | x ->
+            failwithf "expected `Some (Asset.Node x)` but `%A`" x
 
     assetsManager, state
 
@@ -258,6 +318,7 @@ let updatePhysics (dt: float) (state: State) =
 
 let update (dt: float) (assetsManager: AssetsManager) (state: State) =
     state
+    |> updateInputPlayer
     |> updatePhysics dt
     |> updateGraphics assetsManager
 
