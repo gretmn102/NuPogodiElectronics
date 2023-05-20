@@ -12,12 +12,24 @@ module EggId =
 
 let maxPos = 5
 
+type EggGutter =
+    | LeftTop = 0
+    | LeftBottom = 1
+    | RightTop = 2
+    | RightBottom = 3
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module EggGutter =
+    let all =
+        // System.Enum.GetValues<EggGutter>() // error in Fable 4.1.3
+        System.Enum.GetValues(typeof<EggGutter>) :?> EggGutter array // System.Collections.Generic.
+
 type Egg =
     {
         Id: EggId
         /// [1..5]
         Pos: int
-        AssetId: string
+        Gutter: EggGutter
     }
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
@@ -26,7 +38,7 @@ module Egg =
         {
             Id = EggId.create ()
             Pos = 1
-            AssetId = assetId
+            Gutter = assetId
         }
 
     let move (egg: Egg) =
@@ -56,12 +68,17 @@ module Wolf =
             HandPos = WolfHandPos.Top
         }
 
+type BrokenEggPos =
+    | Left = 0
+    | Right = 1
+
 type State =
     {
         Eggs: Map<EggId, Egg>
         Wolf: Wolf
         Cooldown: float
         TimeAcc: float
+        BrokenEggPos: BrokenEggPos option
     }
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
@@ -72,6 +89,7 @@ module State =
             Cooldown = 1000.0
             TimeAcc = 0.0
             Wolf = Wolf.create ()
+            BrokenEggPos = None
         }
 
 type Sprite =
@@ -147,6 +165,8 @@ module AssetLabels =
     let rec leftWolfBottomHand = nameof leftWolfBottomHand
     let rec rightWolfTopHand = nameof rightWolfTopHand
     let rec rightWolfBottomHand = nameof rightWolfBottomHand
+    let rec rightBrokenEgg = nameof rightBrokenEgg
+    let rec leftBrokenEgg = nameof leftBrokenEgg
 
 type AssetsManager =
     {
@@ -197,6 +217,8 @@ module AssetsManager =
                     load AssetLabels.leftWolfBottomHand
                     load AssetLabels.rightWolfTopHand
                     load AssetLabels.rightWolfBottomHand
+                    load AssetLabels.leftBrokenEgg
+                    load AssetLabels.rightBrokenEgg
                 ]
                 |> Map.ofList
         }
@@ -265,7 +287,19 @@ let updateGraphics (assetsManager: AssetsManager) (state: State) =
         state.Eggs
         |> Map.fold
             (fun (assetsManager: AssetsManager) id egg ->
-                match AssetsManager.tryFind egg.AssetId assetsManager with
+                let eggAssets =
+                    match egg.Gutter with
+                    | EggGutter.LeftTop ->
+                        AssetLabels.leftTopEggs
+                    | EggGutter.LeftBottom ->
+                        AssetLabels.leftBottomEggs
+                    | EggGutter.RightTop ->
+                        AssetLabels.rightTopEggs
+                    | EggGutter.RightBottom ->
+                        AssetLabels.rightBottomEggs
+                    | x -> failwithf "not found `EggGutter.%A`" x
+
+                match AssetsManager.tryFind eggAssets assetsManager with
                 | Some (Asset.Group group) ->
                     let posId = string egg.Pos
                     let sprite =
@@ -279,10 +313,31 @@ let updateGraphics (assetsManager: AssetsManager) (state: State) =
                         Map.add posId sprite group
                         |> Asset.Group
 
-                    AssetsManager.add egg.AssetId group assetsManager
+                    AssetsManager.add eggAssets group assetsManager
                 | x ->
                     failwithf "expected `Some (Asset.Group group)` but `%A`" x
             )
+            assetsManager
+
+    let assetsManager =
+
+        match state.BrokenEggPos with
+        | Some x ->
+            let assetLabel =
+                match x with
+                | BrokenEggPos.Left ->
+                    AssetLabels.leftBrokenEgg
+                | BrokenEggPos.Right ->
+                    AssetLabels.rightBrokenEgg
+                | x -> failwithf "expected `BrokenEggPos.Left` or `BrokenEggPos.Right` but `%A`" x
+
+            match AssetsManager.tryFind assetLabel assetsManager with
+            | Some (Asset.Node x) ->
+                let x = Asset.Node (Sprite.visible x)
+                AssetsManager.add assetLabel x assetsManager
+            | x ->
+                failwithf "expected `Some (Asset.Node x)` but `%A`" x
+        | None ->
             assetsManager
 
     let assetsManager =
@@ -329,36 +384,40 @@ let r = System.Random()
 let updatePhysics (dt: float) (state: State) =
     if state.TimeAcc > state.Cooldown then
         let state =
-            { state with
-                Eggs =
-                    state.Eggs
-                    |> Map.fold
-                        (fun st id egg ->
-                            let newPos = egg.Pos + 1
-                            if newPos > maxPos then
-                                st
-                            else
+            state.Eggs
+            |> Map.fold
+                (fun state id egg ->
+                    let newPos = egg.Pos + 1
+                    if newPos > maxPos then
+                        { state with
+                            BrokenEggPos =
+                                match egg.Gutter with
+                                | EggGutter.LeftTop | EggGutter.LeftBottom ->
+                                    Some BrokenEggPos.Left
+                                | EggGutter.RightTop | EggGutter.RightBottom ->
+                                    Some BrokenEggPos.Right
+                                | x -> failwithf "not found EggGutter.%A" x
+                        }
+                    else
+                        { state with
+                            Eggs =
                                 let egg =
                                     { egg with
                                         Pos = newPos
                                     }
-                                Map.add id egg st
-                        )
-                        Map.empty
-            }
+                                Map.add id egg state.Eggs
+                        }
+                )
+                { state with
+                    Eggs = Map.empty
+                    BrokenEggPos = None
+                }
 
         let state =
             { state with
                 Eggs =
-                    let eggAssets = [|
-                        AssetLabels.rightTopEggs
-                        AssetLabels.rightBottomEggs
-                        AssetLabels.leftTopEggs
-                        AssetLabels.leftBottomEggs
-                    |]
-
                     let newEgg =
-                        Egg.create eggAssets.[r.Next(0, 4)]
+                        Egg.create EggGutter.all.[r.Next(0, 4)]
 
                     Map.add newEgg.Id newEgg state.Eggs
             }

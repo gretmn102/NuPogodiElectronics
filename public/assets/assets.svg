@@ -109,15 +109,15 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#505050"
      showgrid="false"
-     inkscape:zoom="2.919435"
-     inkscape:cx="1276.9594"
-     inkscape:cy="163.90158"
+     inkscape:zoom="1.4597175"
+     inkscape:cx="539.14542"
+     inkscape:cy="599.08852"
      inkscape:window-width="1360"
      inkscape:window-height="749"
      inkscape:window-x="-4"
      inkscape:window-y="-4"
      inkscape:window-maximized="1"
-     inkscape:current-layer="svg7566" />
+     inkscape:current-layer="g37475" />
   <svg:rect
      style="fill:#4c3634;fill-opacity:1;stroke-width:0.826152"
      id="rect23736"
@@ -14660,8 +14660,7 @@
   <svg:g
      id="g37475"
      style="display:inline"
-     inkscape:label="screen"
-     sodipodi:insensitive="true">
+     inkscape:label="screen">
     <svg:g
        id="g106813"
        inkscape:label="shadow"
@@ -15329,7 +15328,8 @@
     </svg:g>
     <svg:g
        id="rightCrackedEgg"
-       transform="translate(-7.8354054,-14.76875)">
+       transform="translate(-7.8354054,-14.76875)"
+       inkscape:label="rightBrokenEgg">
       <svg:ellipse
          fill="#000000"
          cx="0"
@@ -15427,7 +15427,7 @@
     <svg:g
        id="leftCrackedEgg"
        transform="translate(-7.8354054,-14.76875)"
-       inkscape:label="leftCrackedEgg">
+       inkscape:label="leftBrokenEgg">
       <svg:ellipse
          fill="#000000"
          cx="0"
