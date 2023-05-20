@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "scripts": {
+    "dotnet:install": "dotnet tool restore && dotnet paket install",
+    "dotnet:clean": "dotnet clean",
+    "postinstall": "npm run dotnet:install",
+    "fable:build": "dotnet fable src/NuPogodiElectronics.fsproj -o dist",
+    "fable:watch": "npm run fable:build -- --watch",
+    "vite:watch": "vite",
+    "vite:build": "vite build",
+    "dev": "concurrently \"npm:*:watch\"",
+    "deploy": "npm run fable:build && npm run vite:build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.1",
+    "vite": "^4.3.5"
+  }
+}
