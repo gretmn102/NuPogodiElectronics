@@ -391,10 +391,22 @@ let updatePhysics (dt: float) (state: State) =
                     if newPos > maxPos then
                         { state with
                             BrokenEggPos =
-                                match egg.Gutter with
-                                | EggGutter.LeftTop | EggGutter.LeftBottom ->
+                                match egg.Gutter, state.Wolf.BodyPos, state.Wolf.HandPos with
+                                | EggGutter.LeftTop, WolfBodyPos.Left, WolfHandPos.Top ->
+                                    None
+                                | EggGutter.LeftTop, _, _ ->
                                     Some BrokenEggPos.Left
-                                | EggGutter.RightTop | EggGutter.RightBottom ->
+                                | EggGutter.LeftBottom, WolfBodyPos.Left, WolfHandPos.Bottom ->
+                                    None
+                                | EggGutter.LeftBottom, _, _ ->
+                                    Some BrokenEggPos.Left
+                                | EggGutter.RightTop, WolfBodyPos.Right, WolfHandPos.Top ->
+                                    None
+                                | EggGutter.RightTop, _, _ ->
+                                    Some BrokenEggPos.Right
+                                | EggGutter.RightBottom, WolfBodyPos.Right, WolfHandPos.Bottom ->
+                                    None
+                                | EggGutter.RightBottom, _, _ ->
                                     Some BrokenEggPos.Right
                                 | x -> failwithf "not found EggGutter.%A" x
                         }
