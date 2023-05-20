@@ -6,10 +6,12 @@ open Browser.XMLDom
 let canvas : HTMLDivElement = document.createElement("div") :?> HTMLDivElement
 
 let appNode = document.querySelector "#app"
+appNode.setAttribute("style", "height: 100%;")
 appNode.appendChild canvas
 |> ignore
 
 canvas.innerText <- "Loading..."
+canvas.setAttribute("style", "height: 100%;")
 
 let loadSvg () =
     let url = "/assets/assets.svg"
@@ -20,7 +22,12 @@ let loadSvg () =
     |> Promise.map (fun rawSvg ->
         let parser = DOMParser.Create ()
         let doc = parser.parseFromString(rawSvg, "image/svg+xml")
-        doc.documentElement :?> SVGElement
+        let svg = doc.documentElement :?> SVGElement
+        svg.setAttribute("width", "100%")
+        svg.setAttribute("height", "100%")
+        // svg.setAttribute("preserveAspectRatio", "xMaxYMax")
+
+        svg
         |> Ok
     )
     |> Promise.catch (fun x ->
