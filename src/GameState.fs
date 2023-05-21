@@ -3,6 +3,12 @@ type BrokenEggPos =
     | Left = 0
     | Right = 1
 
+[<Struct;RequireQualifiedAccess>]
+type GameStatus =
+    | HasNotStartedYet
+    | Playing
+    | GameOver
+
 type State =
     {
         Eggs: Map<EggId, Egg>
@@ -12,6 +18,7 @@ type State =
         BrokenEggPos: BrokenEggPos option
         CatchedEggsCount: int
         BrokenEggsCount: int
+        Status: GameStatus
     }
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
@@ -25,4 +32,5 @@ module State =
             BrokenEggPos = None
             CatchedEggsCount = 0
             BrokenEggsCount = 0
+            Status = GameStatus.HasNotStartedYet
         }

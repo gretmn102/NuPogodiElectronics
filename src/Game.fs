@@ -2,10 +2,30 @@ module NuPogodiElectronics.Game
 open Browser
 
 let update (dt: float) (assetsManager: AssetsManager) (state: State) =
-    state
-    |> PlayerInputSystem.update
-    |> PhysicsSystem.update dt
-    |> GraphicsSystem.update assetsManager
+    match state.Status with
+    | GameStatus.Playing ->
+        state
+        |> PlayerInputSystem.update
+        |> PhysicsSystem.update dt
+        |> GraphicsSystem.update assetsManager
+
+    | GameStatus.GameOver ->
+        let state =
+            { state with
+                Status = GameStatus.HasNotStartedYet
+            }
+        assetsManager, state
+
+    | GameStatus.HasNotStartedYet ->
+        if Ui.isStartGameAButtonPressed then
+            let state =
+                let state = State.create ()
+                { state with
+                    Status = GameStatus.Playing
+                }
+            assetsManager, state
+        else
+            assetsManager, state
 
 let start (assetsManager: AssetsManager) =
     let rec loop (previousTimeStamp, assetsManager, state) =
@@ -16,7 +36,7 @@ let start (assetsManager: AssetsManager) =
         )
         |> ignore
 
-    Ui.initKeyButtons assetsManager
+    Ui.init assetsManager
 
     let initState = State.create ()
 

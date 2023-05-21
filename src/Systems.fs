@@ -84,10 +84,18 @@ module PhysicsSystem =
                                             state.CatchedEggsCount + 1
                                     }
                                 | Some _ ->
-                                    { state with
-                                        BrokenEggsCount =
-                                            state.BrokenEggsCount + 1
-                                    }
+                                    let brokenEggsCount = state.BrokenEggsCount + 1
+                                    let state =
+                                        { state with
+                                            BrokenEggsCount =
+                                                brokenEggsCount
+                                        }
+                                    if brokenEggsCount < 3 then
+                                        state
+                                    else
+                                        { state with
+                                            Status = GameStatus.GameOver
+                                        }
                             state
                         else
                             { state with

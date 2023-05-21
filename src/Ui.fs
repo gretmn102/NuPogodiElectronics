@@ -1,27 +1,31 @@
 module NuPogodiElectronics.Ui
 
-let initKeyButtons (assetsManager: AssetsManager) =
-    let bind assetId binding =
-        assetsManager
-        |> AssetsManager.iterById assetId (
-            Asset.iter (fun sprite ->
-                let svgElement = sprite.SvgElement
-                svgElement.onmousedown <- fun x ->
-                    binding true
+let mutable isStartGameAButtonPressed = false
 
-                svgElement.onmouseup <- fun x ->
-                    binding false
+let bind assetId binding assetsManager =
+    assetsManager
+    |> AssetsManager.iterById assetId (
+        Asset.iter (fun sprite ->
+            let svgElement = sprite.SvgElement
+            svgElement.onmousedown <- fun x ->
+                binding true
 
-                svgElement.onmouseout <- fun x ->
-                    binding false
+            svgElement.onmouseup <- fun x ->
+                binding false
 
-                svgElement.ontouchstart <- fun x ->
-                    binding true
+            svgElement.onmouseout <- fun x ->
+                binding false
 
-                svgElement.ontouchend <- fun x ->
-                    binding false
-            )
+            svgElement.ontouchstart <- fun x ->
+                binding true
+
+            svgElement.ontouchend <- fun x ->
+                binding false
         )
+    )
+
+let initKeyButtons (assetsManager: AssetsManager) =
+    let bind assetId binding = bind assetId binding assetsManager
 
     bind AssetLabels.leftTopButton (fun isPress ->
         Joystick.isLeft <- isPress
@@ -42,3 +46,16 @@ let initKeyButtons (assetsManager: AssetsManager) =
         Joystick.isRight <- isPress
         Joystick.isDown <- isPress
     )
+
+let initStartGameAButton (assetsManager: AssetsManager) =
+    assetsManager
+    |> bind AssetLabels.gameAButton (fun isPressed ->
+        isStartGameAButtonPressed <- isPressed
+    )
+
+let init (assetsManager: AssetsManager) =
+    assetsManager
+    |> initKeyButtons
+
+    assetsManager
+    |> initStartGameAButton
