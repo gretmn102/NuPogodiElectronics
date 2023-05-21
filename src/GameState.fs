@@ -16,7 +16,7 @@ type State =
         BrokenEgg: BrokenEggPos option
         HatchedChick: HatchedChick option
         CatchedEggsCount: int
-        BrokenEggsCount: int
+        BrokenEggsCount: float
         Status: GameStatus
         Bunny: Bunny
     }
@@ -30,7 +30,7 @@ module State =
             BrokenEgg = None
             HatchedChick = None
             CatchedEggsCount = 0
-            BrokenEggsCount = 0
+            BrokenEggsCount = 0.0
             Status = GameStatus.HasNotStartedYet
             Bunny = Bunny.create ()
         }

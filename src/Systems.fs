@@ -109,7 +109,14 @@ module PhysicsSystem =
                                             state.CatchedEggsCount + 1
                                     }
                                 | Some _ ->
-                                    let brokenEggsCount = state.BrokenEggsCount + 1
+                                    let brokenEggValue =
+                                        match state.Bunny.Status with
+                                        | BunnyStatus.Active ->
+                                            0.5
+                                        | _ ->
+                                            1.0
+
+                                    let brokenEggsCount = state.BrokenEggsCount + brokenEggValue
                                     let state =
                                         { state with
                                             BrokenEggsCount =
@@ -333,7 +340,7 @@ module GraphicsSystem =
                     f acc (i + 1) length
                 else
                     assetsManager
-            f assetsManager 0 (state.BrokenEggsCount % (assetsIds.Length + 1))
+            f assetsManager 0 (int state.BrokenEggsCount % (assetsIds.Length + 1))
 
         let assetsManager =
             let visible assetLabel assetsManager =
