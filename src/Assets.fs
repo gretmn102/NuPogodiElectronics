@@ -214,6 +214,7 @@ module AssetLabels =
     let rec brokenEgg2 = nameof brokenEgg2
     let rec brokenEgg3 = nameof brokenEgg3
     let rec gameAButton = nameof gameAButton
+    let rec bunny = nameof bunny
 
 type AssetsManager =
     {
@@ -295,6 +296,7 @@ module AssetsManager =
                     load AssetLabels.brokenEgg2
                     load AssetLabels.brokenEgg3
                     loadVisibleLock AssetLabels.gameAButton
+                    load AssetLabels.bunny
                 ]
                 |> Map.ofList
         }

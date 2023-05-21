@@ -43,16 +43,18 @@ module PlayerInputSystem =
 module PhysicsSystem =
     let r = System.Random()
 
-    let update (dt: float) (state: State) =
-        if state.TimeAcc > state.Cooldown then
+    let updateEggs (dt: float) (state: State) =
+        let eggsContainer = state.EggsContainer
+        if eggsContainer.TimeAcc > eggsContainer.Cooldown then
             let state =
-                state.Eggs
+                eggsContainer.Eggs
                 |> Map.fold
                     (fun state id egg ->
                         let newPos = egg.Pos + 1
                         if newPos > Egg.maxPos then
                             let brokenEggPos =
-                                match egg.Gutter, state.Wolf.BodyPos, state.Wolf.HandPos with
+                                let wolf = state.Wolf
+                                match egg.Gutter, wolf.BodyPos, wolf.HandPos with
                                 | EggGutter.LeftTop, WolfBodyPos.Left, WolfHandPos.Top ->
                                     None
                                 | EggGutter.LeftTop, _, _ ->
@@ -98,36 +100,79 @@ module PhysicsSystem =
                                         }
                             state
                         else
-                            { state with
-                                Eggs =
-                                    let egg =
-                                        { egg with
-                                            Pos = newPos
-                                        }
-                                    Map.add id egg state.Eggs
-                            }
+                            state
+                            |> State.mapEggsContainer (fun state ->
+                                { state with
+                                    Eggs =
+                                        let egg =
+                                            { egg with
+                                                Pos = newPos
+                                            }
+                                        Map.add id egg state.Eggs
+                                }
+                            )
                     )
-                    { state with
-                        Eggs = Map.empty
+
+                    ({ state with
                         BrokenEggPos = None
                     }
+                    |> State.mapEggsContainer (fun state ->
+                        { state with
+                            Eggs = Map.empty
+                        }
+                    ))
 
-            let state =
+            state
+            |> State.mapEggsContainer (fun state ->
                 { state with
                     Eggs =
                         let newEgg =
                             Egg.create EggGutter.all.[r.Next(0, 4)]
 
                         Map.add newEgg.Id newEgg state.Eggs
+                    TimeAcc = 0
                 }
-
-            { state with
-                TimeAcc = 0
-            }
+            )
         else
-            { state with
-                TimeAcc = dt + state.TimeAcc
-            }
+            state
+            |> State.mapEggsContainer (fun state ->
+                { state with
+                    TimeAcc = dt + state.TimeAcc
+                }
+            )
+
+    let updateBunny (dt: float) (state: State) =
+        let bunny = state.Bunny
+
+        let f statusChangeTimeLeft newStatus =
+            let timeLeft = bunny.StatusChangeTimeLeft
+            if bunny.StatusChangeTimeLeft > 0 then
+                state
+                |> State.mapBunny (fun state ->
+                    { state with
+                        StatusChangeTimeLeft = timeLeft - dt
+                    }
+                )
+            else
+                state
+                |> State.mapBunny (fun state ->
+                    { state with
+                        StatusChangeTimeLeft = statusChangeTimeLeft
+                        Status = newStatus
+                    }
+                )
+        match bunny.Status with
+        | BunnyStatus.Ready ->
+            f bunny.ActiveTime BunnyStatus.Active
+        | BunnyStatus.Active ->
+            f bunny.CooldownTime BunnyStatus.Cooldown
+        | BunnyStatus.Cooldown ->
+            f bunny.AutoActivateTime BunnyStatus.Ready
+
+    let update (dt: float) (state: State) =
+        state
+        |> updateEggs dt
+        |> updateBunny dt
 
 module GraphicsSystem =
     let update (assetsManager: AssetsManager) (state: State) =
@@ -137,7 +182,7 @@ module GraphicsSystem =
             AssetsManager.update assetLabel (Asset.map Sprite.visible) assetsManager
 
         let assetsManager =
-            state.Eggs
+            state.EggsContainer.Eggs
             |> Map.fold
                 (fun (assetsManager: AssetsManager) id egg ->
                     let eggAssets =
@@ -245,5 +290,15 @@ module GraphicsSystem =
                 else
                     assetsManager
             f assetsManager 0 (state.BrokenEggsCount % (assetsIds.Length + 1))
+
+        let assetsManager =
+            let visible assetLabel assetsManager =
+                AssetsManager.update assetLabel (Asset.map Sprite.visible) assetsManager
+
+            match state.Bunny.Status with
+            | BunnyStatus.Active ->
+                visible AssetLabels.bunny assetsManager
+            | _ ->
+                assetsManager
 
         assetsManager, state

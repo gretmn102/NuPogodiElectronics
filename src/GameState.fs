@@ -11,26 +11,34 @@ type GameStatus =
 
 type State =
     {
-        Eggs: Map<EggId, Egg>
         Wolf: Wolf
-        Cooldown: float
-        TimeAcc: float
+        EggsContainer: EggsContainer
         BrokenEggPos: BrokenEggPos option
         CatchedEggsCount: int
         BrokenEggsCount: int
         Status: GameStatus
+        Bunny: Bunny
     }
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module State =
     let create () =
         {
-            Eggs = Map.empty
-            Cooldown = 1000.0
-            TimeAcc = 0.0
+            EggsContainer = EggsContainer.create ()
             Wolf = Wolf.create ()
             BrokenEggPos = None
             CatchedEggsCount = 0
             BrokenEggsCount = 0
             Status = GameStatus.HasNotStartedYet
+            Bunny = Bunny.create ()
+        }
+
+    let mapEggsContainer mapping (state: State) =
+        { state with
+            EggsContainer = mapping state.EggsContainer
+        }
+
+    let mapBunny mapping (state: State) =
+        { state with
+            Bunny = mapping state.Bunny
         }

@@ -63,3 +63,47 @@ module Wolf =
             BodyPos = WolfBodyPos.Left
             HandPos = WolfHandPos.Top
         }
+
+type EggsContainer =
+    {
+        Eggs: Map<EggId, Egg>
+        Cooldown: float
+        TimeAcc: float
+    }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module EggsContainer =
+    let create () =
+        {
+            Eggs = Map.empty
+            Cooldown = 1000.0
+            TimeAcc = 0.0
+        }
+
+[<RequireQualifiedAccess;Struct>]
+type BunnyStatus =
+    | Active
+    | Cooldown
+    | Ready
+
+type Bunny =
+    {
+        Status: BunnyStatus
+        CooldownTime: float
+        ActiveTime: float
+        AutoActivateTime: float
+
+        StatusChangeTimeLeft: float
+    }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module Bunny =
+    let create () : Bunny =
+        {
+            Status = BunnyStatus.Ready
+            CooldownTime = 1.0 * 1000.0
+            ActiveTime = 3.0 * 1000.0
+            AutoActivateTime = 10.0 * 1000.0
+
+            StatusChangeTimeLeft = 0.0
+        }
