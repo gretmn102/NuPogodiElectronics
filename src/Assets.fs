@@ -6,11 +6,12 @@ type Sprite =
         Id: string
         SvgElement: SVGElement
         IsHidden: bool
+        IsVisibleLock: bool
     }
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
 module Sprite =
-    let create (svg: SVGElement) =
+    let create isVisibleLock (svg: SVGElement) =
         {
             Id = svg.getAttribute("inkscape:label")
             SvgElement = svg
@@ -19,17 +20,22 @@ module Sprite =
                 | null -> false
                 | "hidden" -> true
                 | _ -> false
+            IsVisibleLock = isVisibleLock
         }
 
     let hide (sprite: Sprite) =
-        if sprite.IsHidden then
+        if sprite.IsVisibleLock then
+            sprite
+        elif sprite.IsHidden then
             sprite
         else
             sprite.SvgElement.setAttribute("visibility", "hidden")
             { sprite with IsHidden = true }
 
     let visible (sprite: Sprite) =
-        if sprite.IsHidden then
+        if sprite.IsVisibleLock then
+            sprite
+        elif sprite.IsHidden then
             sprite.SvgElement.setAttribute("visibility", "")
             { sprite with IsHidden = false }
         else
@@ -200,6 +206,10 @@ module AssetLabels =
     let rec digit2 = nameof digit2
     let rec digit3 = nameof digit3
     let rec digit4 = nameof digit4
+    let rec leftTopButton = nameof leftTopButton
+    let rec rightTopButton = nameof rightTopButton
+    let rec leftBottomButton = nameof leftBottomButton
+    let rec rightBottomButton = nameof rightBottomButton
 
 type AssetsManager =
     {
@@ -226,7 +236,7 @@ module AssetsManager =
                 |> List.map (fun i ->
                     let id = string i
                     findByLabel id group
-                    |> Sprite.create
+                    |> Sprite.create false
                     |> fun sprite -> id, Asset.Node sprite
                 )
                 |> Map.ofList
@@ -234,7 +244,11 @@ module AssetsManager =
 
         let load name =
             let x = findByLabel name root
-            name, Asset.Node (Sprite.create x)
+            name, Asset.Node (Sprite.create false x)
+
+        let loadVisibleLock name =
+            let x = findByLabel name root
+            name, Asset.Node (Sprite.create true x)
 
         let loadSegmentDisplay groupName =
             let group = findByLabel groupName root
@@ -243,7 +257,7 @@ module AssetsManager =
                 |> Array.map (fun x ->
                     let id = SegmentDisplay.toAssetName x
                     findByLabel id group
-                    |> Sprite.create
+                    |> Sprite.create false
                     |> fun sprite -> id, Asset.Node sprite
                 )
                 |> Map.ofArray
@@ -269,6 +283,10 @@ module AssetsManager =
                     loadSegmentDisplay AssetLabels.digit2
                     loadSegmentDisplay AssetLabels.digit3
                     loadSegmentDisplay AssetLabels.digit4
+                    loadVisibleLock AssetLabels.leftTopButton
+                    loadVisibleLock AssetLabels.rightTopButton
+                    loadVisibleLock AssetLabels.leftBottomButton
+                    loadVisibleLock AssetLabels.rightBottomButton
                 ]
                 |> Map.ofList
         }
@@ -296,5 +314,12 @@ module AssetsManager =
         | Some asset ->
             let asset = updating asset
             add assetLabel asset assetsManager
+        | x ->
+            failwithf "expected `Some _` but `%A`" x
+
+    let iterById assetId updating assetsManager =
+        match tryFind assetId assetsManager with
+        | Some asset ->
+            updating asset
         | x ->
             failwithf "expected `Some _` but `%A`" x

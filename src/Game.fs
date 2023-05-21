@@ -16,6 +16,8 @@ let start (assetsManager: AssetsManager) =
         )
         |> ignore
 
+    Joystick.initUiButtons assetsManager
+
     let initState = State.create ()
 
     loop (0.0, assetsManager, initState)
