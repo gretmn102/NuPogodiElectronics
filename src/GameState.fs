@@ -11,6 +11,7 @@ type State =
         TimeAcc: float
         BrokenEggPos: BrokenEggPos option
         CatchedEggsCount: int
+        BrokenEggsCount: int
     }
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
@@ -23,4 +24,5 @@ module State =
             Wolf = Wolf.create ()
             BrokenEggPos = None
             CatchedEggsCount = 0
+            BrokenEggsCount = 0
         }

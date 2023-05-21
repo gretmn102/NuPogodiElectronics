@@ -71,15 +71,24 @@ module PhysicsSystem =
                                     Some BrokenEggPos.Right
                                 | x -> failwithf "not found EggGutter.%A" x
 
-                            { state with
-                                BrokenEggPos = brokenEggPos
-                                CatchedEggsCount =
-                                    match brokenEggPos with
-                                    | None ->
-                                        state.CatchedEggsCount + 1
-                                    | Some _ ->
-                                        state.CatchedEggsCount
-                            }
+                            let state =
+                                { state with
+                                    BrokenEggPos = brokenEggPos
+                                }
+
+                            let state =
+                                match brokenEggPos with
+                                | None ->
+                                    { state with
+                                        CatchedEggsCount =
+                                            state.CatchedEggsCount + 1
+                                    }
+                                | Some _ ->
+                                    { state with
+                                        BrokenEggsCount =
+                                            state.BrokenEggsCount + 1
+                                    }
+                            state
                         else
                             { state with
                                 Eggs =
@@ -205,5 +214,28 @@ module GraphicsSystem =
             |> draw AssetLabels.digit2 2
             |> draw AssetLabels.digit3 3
             |> draw AssetLabels.digit4 4
+
+        let assetsManager =
+            let draw assetId assetsManager =
+                assetsManager
+                |> AssetsManager.update assetId (
+                    Asset.map Sprite.visible
+                )
+
+            let assetsIds =
+                [|
+                    AssetLabels.brokenEgg1
+                    AssetLabels.brokenEgg2
+                    AssetLabels.brokenEgg3
+                |]
+
+            let rec f assetsManager i length =
+                if i < length then
+                    let assetId = assetsIds.[i]
+                    let acc = draw assetId assetsManager
+                    f acc (i + 1) length
+                else
+                    assetsManager
+            f assetsManager 0 (state.BrokenEggsCount % (assetsIds.Length + 1))
 
         assetsManager, state

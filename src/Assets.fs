@@ -210,6 +210,9 @@ module AssetLabels =
     let rec rightTopButton = nameof rightTopButton
     let rec leftBottomButton = nameof leftBottomButton
     let rec rightBottomButton = nameof rightBottomButton
+    let rec brokenEgg1 = nameof brokenEgg1
+    let rec brokenEgg2 = nameof brokenEgg2
+    let rec brokenEgg3 = nameof brokenEgg3
 
 type AssetsManager =
     {
@@ -287,6 +290,9 @@ module AssetsManager =
                     loadVisibleLock AssetLabels.rightTopButton
                     loadVisibleLock AssetLabels.leftBottomButton
                     loadVisibleLock AssetLabels.rightBottomButton
+                    load AssetLabels.brokenEgg1
+                    load AssetLabels.brokenEgg2
+                    load AssetLabels.brokenEgg3
                 ]
                 |> Map.ofList
         }
