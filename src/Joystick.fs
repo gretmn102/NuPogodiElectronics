@@ -8,26 +8,26 @@ let mutable isDown = false
 
 document.onkeydown <- fun x ->
     match x.code with
-    | "KeyD" ->
+    | "KeyD" | "ArrowRight" ->
         isRight <- true
-    | "KeyA" ->
+    | "KeyA" | "ArrowLeft" ->
         isLeft <- true
-    | "KeyW" ->
+    | "KeyW" | "ArrowUp" ->
         isUp <- true
-    | "KeyS" ->
+    | "KeyS" | "ArrowDown" ->
         isDown <- true
     | _ ->
         ()
 
 document.onkeyup <- fun x ->
     match x.code with
-    | "KeyD" ->
+    | "KeyD" | "ArrowRight" ->
         isRight <- false
-    | "KeyA" ->
+    | "KeyA" | "ArrowLeft" ->
         isLeft <- false
-    | "KeyW" ->
+    | "KeyW" | "ArrowUp" ->
         isUp <- false
-    | "KeyS" ->
+    | "KeyS" | "ArrowDown" ->
         isDown <- false
     | _ ->
         ()
