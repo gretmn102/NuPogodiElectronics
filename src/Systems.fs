@@ -112,17 +112,17 @@ module PhysicsSystem =
                                     let brokenEggValue =
                                         match state.Bunny.Status with
                                         | BunnyStatus.Active ->
-                                            0.5
+                                            BrokenEggIcon.Half (HalfBrokenEggIcon.create ())
                                         | _ ->
-                                            1.0
+                                            BrokenEggIcon.Full
 
-                                    let brokenEggsCount = state.BrokenEggsCount + brokenEggValue
+                                    let brokenEggsBar = BrokenEggsBar.add brokenEggValue state.BrokenEggsBar
                                     let state =
                                         { state with
-                                            BrokenEggsCount =
-                                                brokenEggsCount
+                                            BrokenEggsBar =
+                                                brokenEggsBar
                                         }
-                                    if brokenEggsCount < 3 then
+                                    if brokenEggsBar.Length < 3 then
                                         state
                                     else
                                         { state with
@@ -219,11 +219,16 @@ module PhysicsSystem =
         | None ->
             state
 
+    let updateBrokenEggsBar (dt: float) (state: State) =
+        state
+        |> State.mapBrokenEggsBar (BrokenEggsBar.update dt)
+
     let update (dt: float) (state: State) =
         state
         |> updateEggs dt
         |> updateBunny dt
         |> updateHatchedChick dt
+        |> updateBrokenEggsBar dt
 
 module GraphicsSystem =
     let update (assetsManager: AssetsManager) (state: State) =
@@ -333,14 +338,27 @@ module GraphicsSystem =
                     AssetLabels.brokenEgg3
                 |]
 
-            let rec f assetsManager i length =
-                if i < length then
-                    let assetId = assetsIds.[i]
-                    let acc = draw assetId assetsManager
-                    f acc (i + 1) length
-                else
-                    assetsManager
-            f assetsManager 0 (int state.BrokenEggsCount % (assetsIds.Length + 1))
+            state.BrokenEggsBar
+            |> BrokenEggsBar.foldBack
+                (fun (i, assetsManager) brokenEggIcon ->
+                    if i < assetsIds.Length then
+                        let assetsManager =
+                            match brokenEggIcon with
+                            | BrokenEggIcon.Full ->
+                                let assetId = assetsIds.[i]
+                                draw assetId assetsManager
+                            | BrokenEggIcon.Half x ->
+                                if HalfBrokenEggIcon.isHidden x then
+                                    assetsManager
+                                else
+                                    let assetId = assetsIds.[i]
+                                    draw assetId assetsManager
+                        (i + 1, assetsManager)
+                    else
+                        (i + 1, assetsManager)
+                )
+                (0, assetsManager)
+            |> snd
 
         let assetsManager =
             let visible assetLabel assetsManager =

@@ -16,7 +16,7 @@ type State =
         BrokenEgg: BrokenEggPos option
         HatchedChick: HatchedChick option
         CatchedEggsCount: int
-        BrokenEggsCount: float
+        BrokenEggsBar: BrokenEggsBar
         Status: GameStatus
         Bunny: Bunny
     }
@@ -30,7 +30,7 @@ module State =
             BrokenEgg = None
             HatchedChick = None
             CatchedEggsCount = 0
-            BrokenEggsCount = 0.0
+            BrokenEggsBar = BrokenEggsBar.empty
             Status = GameStatus.HasNotStartedYet
             Bunny = Bunny.create ()
         }
@@ -48,4 +48,9 @@ module State =
     let mapHatchedChick mapping (state: State) =
         { state with
             HatchedChick = Option.map mapping state.HatchedChick
+        }
+
+    let mapBrokenEggsBar mapping (state: State) =
+        { state with
+            BrokenEggsBar = mapping state.BrokenEggsBar
         }

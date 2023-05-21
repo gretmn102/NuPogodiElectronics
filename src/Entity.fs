@@ -129,3 +129,86 @@ module HatchedChick =
             Speed = 0.002
             Pos = 0.0
         }
+
+type HalfBrokenEggIcon =
+    {
+        Speed: float
+        /// <1 — hidden, >=1 — visible
+        Visible: float
+    }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module HalfBrokenEggIcon =
+    let create () =
+        {
+            Speed = 0.002
+            Visible = 1.0
+        }
+
+    let isHidden (icon: HalfBrokenEggIcon) =
+        icon.Visible < 1.0
+
+    let update (dt: float) (icon: HalfBrokenEggIcon) =
+        { icon with
+            Visible = (icon.Speed * dt + icon.Visible) % 2.0
+        }
+
+[<RequireQualifiedAccess>]
+type BrokenEggIcon =
+    | Full
+    | Half of HalfBrokenEggIcon
+
+type BrokenEggsBar =
+    {
+        List: BrokenEggIcon list
+        Length: float
+    }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module BrokenEggsBar =
+    let empty : BrokenEggsBar =
+        {
+            List = []
+            Length = 0.0
+        }
+
+    let add (icon: BrokenEggIcon) (brokenEggsBar: BrokenEggsBar) =
+        { brokenEggsBar with
+            List =
+                match brokenEggsBar.List with
+                | (BrokenEggIcon.Half _ as curr)::xs ->
+                    match icon with
+                    | BrokenEggIcon.Full ->
+                        curr::icon::xs
+                    | BrokenEggIcon.Half(_) ->
+                        BrokenEggIcon.Full::xs
+                | _ ->
+                    icon :: brokenEggsBar.List
+            Length =
+                let value =
+                    match icon with
+                    | BrokenEggIcon.Full -> 1.0
+                    | BrokenEggIcon.Half _ -> 0.5
+                value + brokenEggsBar.Length
+        }
+
+    let fold folder state (brokenEggsBar: BrokenEggsBar) =
+        List.fold folder state brokenEggsBar.List
+
+    let foldBack folder state (brokenEggsBar: BrokenEggsBar) =
+        List.foldBack (fun st x -> folder x st) brokenEggsBar.List state
+
+    let update (dt: float) (brokenEggBar: BrokenEggsBar) =
+        match brokenEggBar.List with
+        | (BrokenEggIcon.Half half)::xs ->
+            let x =
+                HalfBrokenEggIcon.update dt half
+                |> BrokenEggIcon.Half
+
+            { brokenEggBar with
+                List =
+                    x::xs
+            }
+
+        | _ ->
+            brokenEggBar
