@@ -75,8 +75,31 @@ module PhysicsSystem =
 
                             let state =
                                 { state with
-                                    BrokenEggPos = brokenEggPos
+                                    BrokenEgg = brokenEggPos
                                 }
+
+                            let state =
+                                match brokenEggPos with
+                                | Some pos ->
+                                    let dir =
+                                        match pos with
+                                        | BrokenEggPos.Left ->
+                                            HatchedChickDirection.Left
+                                        | BrokenEggPos.Right ->
+                                            HatchedChickDirection.Right
+                                        | pos ->
+                                            failwithf "can't convert %A" pos
+
+                                    match state.Bunny.Status with
+                                    | BunnyStatus.Active ->
+                                        { state with
+                                            HatchedChick =
+                                                Some (HatchedChick.create dir)
+                                        }
+                                    | _ ->
+                                        state
+                                | None ->
+                                    state
 
                             let state =
                                 match brokenEggPos with
@@ -114,7 +137,7 @@ module PhysicsSystem =
                     )
 
                     ({ state with
-                        BrokenEggPos = None
+                        BrokenEgg = None
                     }
                     |> State.mapEggsContainer (fun state ->
                         { state with
@@ -169,10 +192,31 @@ module PhysicsSystem =
         | BunnyStatus.Cooldown ->
             f bunny.AutoActivateTime BunnyStatus.Ready
 
+    let updateHatchedChick (dt: float) (state: State) =
+        let hatchedChick = state.HatchedChick
+
+        match hatchedChick with
+        | Some hatchedChick ->
+            let pos = hatchedChick.Pos + hatchedChick.Speed * dt
+            if pos < HatchedChick.posesCount then
+                state
+                |> State.mapHatchedChick (fun hatchedChick ->
+                    { hatchedChick with
+                        Pos = pos
+                    }
+                )
+            else
+                { state with
+                    HatchedChick = None
+                }
+        | None ->
+            state
+
     let update (dt: float) (state: State) =
         state
         |> updateEggs dt
         |> updateBunny dt
+        |> updateHatchedChick dt
 
 module GraphicsSystem =
     let update (assetsManager: AssetsManager) (state: State) =
@@ -207,7 +251,7 @@ module GraphicsSystem =
                 assetsManager
 
         let assetsManager =
-            match state.BrokenEggPos with
+            match state.BrokenEgg with
             | Some x ->
                 let assetLabel =
                     match x with
@@ -300,5 +344,26 @@ module GraphicsSystem =
                 visible AssetLabels.bunny assetsManager
             | _ ->
                 assetsManager
+
+        let assetsManager =
+            match state.HatchedChick with
+            | None ->
+                assetsManager
+            | Some hatchedChick ->
+                let assetGroupId =
+                    match hatchedChick.Direction with
+                    | HatchedChickDirection.Left ->
+                        AssetLabels.leftChickens
+                    | HatchedChickDirection.Right ->
+                        AssetLabels.rightChickens
+                    | dir ->
+                        failwithf "not found asset group ID for \"%A\" direction" dir
+
+                assetsManager
+                |> AssetsManager.update assetGroupId (fun asset ->
+                    let id = string (int hatchedChick.Pos)
+                    asset
+                    |> Asset.updateGroup id (Asset.map Sprite.visible)
+                )
 
         assetsManager, state

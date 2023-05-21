@@ -215,6 +215,8 @@ module AssetLabels =
     let rec brokenEgg3 = nameof brokenEgg3
     let rec gameAButton = nameof gameAButton
     let rec bunny = nameof bunny
+    let rec leftChickens = nameof leftChickens
+    let rec rightChickens = nameof rightChickens
 
 type AssetsManager =
     {
@@ -268,6 +270,18 @@ module AssetsManager =
                 |> Map.ofArray
             groupName, Asset.Group group
 
+        let loadChickens assetGroupId =
+            let group = findByLabel assetGroupId root
+            let group =
+                List.init HatchedChick.posesCount (fun i ->
+                    let id = string i
+                    findByLabel id group
+                    |> Sprite.create false
+                    |> fun sprite -> id, Asset.Node sprite
+                )
+                |> Map.ofList
+            assetGroupId, Asset.Group group
+
         {
             Root = root
             Container =
@@ -297,6 +311,8 @@ module AssetsManager =
                     load AssetLabels.brokenEgg3
                     loadVisibleLock AssetLabels.gameAButton
                     load AssetLabels.bunny
+                    loadChickens AssetLabels.leftChickens
+                    loadChickens AssetLabels.rightChickens
                 ]
                 |> Map.ofList
         }

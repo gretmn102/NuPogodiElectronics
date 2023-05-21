@@ -107,3 +107,25 @@ module Bunny =
 
             StatusChangeTimeLeft = 0.0
         }
+
+type HatchedChickDirection =
+    | Left = 0
+    | Right = 1
+
+type HatchedChick =
+    {
+        Direction: HatchedChickDirection
+        Speed: float
+        Pos: float
+    }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module HatchedChick =
+    let posesCount = 4
+
+    let create corner =
+        {
+            Direction = corner
+            Speed = 0.002
+            Pos = 0.0
+        }
