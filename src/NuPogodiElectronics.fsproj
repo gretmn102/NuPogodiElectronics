@@ -13,6 +13,7 @@
     <Compile Include="GameState.fs" />
     <Compile Include="Joystick.fs" />
     <Compile Include="Systems.fs" />
+    <Compile Include="Ui.fs" />
     <Compile Include="Game.fs" />
     <Compile Include="App.fs" />
   </ItemGroup>
