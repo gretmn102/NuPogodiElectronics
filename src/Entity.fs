@@ -1,105 +1,4 @@
 namespace NuPogodiElectronics
-type EggId = System.Guid
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module EggId =
-    let create () =
-        System.Guid.NewGuid()
-
-type EggGutter =
-    | LeftTop = 0
-    | LeftBottom = 1
-    | RightTop = 2
-    | RightBottom = 3
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module EggGutter =
-    let all =
-        // System.Enum.GetValues<EggGutter>() // error in Fable 4.1.3
-        System.Enum.GetValues(typeof<EggGutter>) :?> EggGutter array
-
-type Egg =
-    {
-        Id: EggId
-        /// [1..5]
-        Pos: int
-        Gutter: EggGutter
-    }
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module Egg =
-    let maxPos = 5
-
-    let create assetId =
-        {
-            Id = EggId.create ()
-            Pos = 1
-            Gutter = assetId
-        }
-
-    let move (egg: Egg) =
-        { egg with
-            Pos = egg.Pos + 1
-        }
-
-type WolfBodyPos =
-    | Left = 0
-    | Right = 1
-
-type WolfHandPos =
-    | Top = 0
-    | Bottom = 1
-
-type Wolf =
-    {
-        BodyPos: WolfBodyPos
-        HandPos: WolfHandPos
-    }
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module Wolf =
-    let create () =
-        {
-            BodyPos = WolfBodyPos.Left
-            HandPos = WolfHandPos.Top
-        }
-
-type EggsContainer =
-    {
-        Eggs: Map<EggId, Egg>
-        Cooldown: float
-        TimeAcc: float
-    }
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module EggsContainer =
-    let create () =
-        {
-            Eggs = Map.empty
-            Cooldown = 1000.0
-            TimeAcc = 0.0
-        }
-
-[<RequireQualifiedAccess;Struct>]
-type BunnyStatus =
-    | Active
-    | Cooldown
-    | Ready
-
-type BunnyHandPos =
-    | Top = 0
-    | Bottom = 1
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-[<RequireQualifiedAccess>]
-module BunnyHandPos =
-    let switch = function
-        | BunnyHandPos.Top ->
-            BunnyHandPos.Bottom
-        | BunnyHandPos.Bottom ->
-            BunnyHandPos.Top
-        | x ->
-            failwithf "%A not implemented yet!" x
-
 type Timer =
     {
         Interval: float
@@ -126,6 +25,180 @@ module Timer =
         { timerComponent with
             TimeLeft = timerComponent.TimeLeft - dt
         }
+
+type EggId = System.Guid
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module EggId =
+    let create () =
+        System.Guid.NewGuid()
+
+type EggGutterCorner =
+    | LeftTop = 0
+    | LeftBottom = 1
+    | RightTop = 2
+    | RightBottom = 3
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module EggGutterCorner =
+    let all =
+        // System.Enum.GetValues<EggGutter>() // error in Fable 4.1.3
+        System.Enum.GetValues(typeof<EggGutterCorner>) :?> EggGutterCorner array
+
+[<RequireQualifiedAccess>]
+type EggGutterStatus =
+    | HasNotStartedYet of Timer
+    | Started
+
+type EggGutter =
+    {
+        Status: EggGutterStatus
+        Corner: EggGutterCorner
+        EggSlots: bool []
+        MovementTimer: Timer
+    }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module EggGutter =
+    let create corner startAt interval eggsCount =
+        {
+            Status =
+                Timer.create startAt
+                |> EggGutterStatus.HasNotStartedYet
+            EggSlots = Array.zeroCreate eggsCount
+            Corner = corner
+            MovementTimer = Timer.create interval
+        }
+
+    let isLast ({ EggSlots = eggSlots }: EggGutter) =
+        eggSlots.[eggSlots.Length - 1]
+
+    let move (isCreateNewEgg: bool) (eggGutter: EggGutter) : EggGutter =
+        let eggSlots = eggGutter.EggSlots
+        let eggSlotsLength = eggSlots.Length
+        let newEggSlots = Array.zeroCreate eggSlotsLength
+
+        newEggSlots.[0] <- isCreateNewEgg
+
+        for i = 0 to eggSlotsLength - 2 do
+            newEggSlots.[i + 1] <- eggSlots.[i]
+
+        let eggGutter =
+            { eggGutter with
+                EggSlots = newEggSlots
+            }
+
+        eggGutter
+
+    /// `isMoved * EggGutter`
+    let update (dt: float) isCreateNewEgg (eggGutter: EggGutter) : bool * EggGutter =
+        let update () =
+            let timer = Timer.update dt eggGutter.MovementTimer
+            let isMoved = Timer.isElapsed timer
+            let eggGutter =
+                if isMoved then
+                    { eggGutter with
+                        MovementTimer = Timer.reset timer
+                    }
+                    |> move isCreateNewEgg
+                else
+                    { eggGutter with
+                        MovementTimer = timer
+                    }
+            isMoved, eggGutter
+
+        match eggGutter.Status with
+        | EggGutterStatus.Started ->
+            update ()
+        | EggGutterStatus.HasNotStartedYet timer ->
+            let timer = Timer.update dt timer
+
+            let newStatus =
+                if Timer.isElapsed timer then
+                    EggGutterStatus.Started
+                else
+                    EggGutterStatus.HasNotStartedYet timer
+
+            let eggGutter =
+                { eggGutter with
+                    Status = newStatus
+                }
+            false, eggGutter
+
+type WolfBodyPos =
+    | Left = 0
+    | Right = 1
+
+type WolfHandPos =
+    | Top = 0
+    | Bottom = 1
+
+type Wolf =
+    {
+        BodyPos: WolfBodyPos
+        HandPos: WolfHandPos
+    }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module Wolf =
+    let create () =
+        {
+            BodyPos = WolfBodyPos.Left
+            HandPos = WolfHandPos.Top
+        }
+
+module ArrayExt =
+    let insertAt idx newElement (xs: _ []) =
+        xs
+        |> Array.mapi (fun i current ->
+            if idx = i then newElement
+            else current
+        )
+
+type EggsContainer =
+    {
+        Eggs: EggGutter []
+    }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module EggsContainer =
+    let eggsCount = 5
+
+    let create () =
+        let interval = 1000.0
+        {
+            Eggs =
+                EggGutterCorner.all
+                |> Array.mapi (fun i corner ->
+                    let startAt = float (i + 1) * (interval / 4.0)
+                    EggGutter.create corner startAt interval eggsCount
+                )
+        }
+
+    let setEggGutter idx (eggGutter: EggGutter) (eggGuttersContainer: EggsContainer) =
+        {
+            Eggs = ArrayExt.insertAt idx eggGutter eggGuttersContainer.Eggs
+        }
+
+[<RequireQualifiedAccess;Struct>]
+type BunnyStatus =
+    | Active
+    | Cooldown
+    | Ready
+
+type BunnyHandPos =
+    | Top = 0
+    | Bottom = 1
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module BunnyHandPos =
+    let switch = function
+        | BunnyHandPos.Top ->
+            BunnyHandPos.Bottom
+        | BunnyHandPos.Bottom ->
+            BunnyHandPos.Top
+        | x ->
+            failwithf "%A not implemented yet!" x
 
 type Bunny =
     {
