@@ -236,53 +236,51 @@ module PhysicsSystem =
         |> updateBrokenEggsBar dt
 
 module GraphicsSystem =
-    let update (assetsManager: AssetsManager) (state: State) =
-        let assetsManager = AssetsManager.hideAll assetsManager
+    let visible assetLabel assetsManager =
+        AssetsManager.update assetLabel (Asset.map Sprite.visible) assetsManager
 
-        let visible assetLabel assetsManager =
-            AssetsManager.update assetLabel (Asset.map Sprite.visible) assetsManager
+    let updateEggsContainer (assetsManager: AssetsManager) (state: State) =
+        state.EggsContainer.Eggs
+        |> Map.fold
+            (fun (assetsManager: AssetsManager) id egg ->
+                let eggAssets =
+                    match egg.Gutter with
+                    | EggGutter.LeftTop ->
+                        AssetLabels.leftTopEggs
+                    | EggGutter.LeftBottom ->
+                        AssetLabels.leftBottomEggs
+                    | EggGutter.RightTop ->
+                        AssetLabels.rightTopEggs
+                    | EggGutter.RightBottom ->
+                        AssetLabels.rightBottomEggs
+                    | x -> failwithf "not found `EggGutter.%A`" x
 
-        let assetsManager =
-            state.EggsContainer.Eggs
-            |> Map.fold
-                (fun (assetsManager: AssetsManager) id egg ->
-                    let eggAssets =
-                        match egg.Gutter with
-                        | EggGutter.LeftTop ->
-                            AssetLabels.leftTopEggs
-                        | EggGutter.LeftBottom ->
-                            AssetLabels.leftBottomEggs
-                        | EggGutter.RightTop ->
-                            AssetLabels.rightTopEggs
-                        | EggGutter.RightBottom ->
-                            AssetLabels.rightBottomEggs
-                        | x -> failwithf "not found `EggGutter.%A`" x
-
-                    assetsManager
-                    |> AssetsManager.update eggAssets (
-                        Asset.updateGroup
-                            (string egg.Pos)
-                            (Asset.map Sprite.visible)
-                    )
+                assetsManager
+                |> AssetsManager.update eggAssets (
+                    Asset.updateGroup
+                        (string egg.Pos)
+                        (Asset.map Sprite.visible)
                 )
-                assetsManager
+            )
+            assetsManager
 
-        let assetsManager =
-            match state.BrokenEgg with
-            | Some x ->
-                let assetLabel =
-                    match x with
-                    | BrokenEggPos.Left ->
-                        AssetLabels.leftBrokenEgg
-                    | BrokenEggPos.Right ->
-                        AssetLabels.rightBrokenEgg
-                    | x -> failwithf "expected `BrokenEggPos.Left` or `BrokenEggPos.Right` but `%A`" x
+    let updateBrokenEgg (assetsManager: AssetsManager) (state: State) =
+        match state.BrokenEgg with
+        | Some x ->
+            let assetLabel =
+                match x with
+                | BrokenEggPos.Left ->
+                    AssetLabels.leftBrokenEgg
+                | BrokenEggPos.Right ->
+                    AssetLabels.rightBrokenEgg
+                | x -> failwithf "expected `BrokenEggPos.Left` or `BrokenEggPos.Right` but `%A`" x
 
-                visible assetLabel assetsManager
-            | None ->
-                assetsManager
+            visible assetLabel assetsManager
+        | None ->
+            assetsManager
 
-        let assetsManager =
+    let updateWolf (assetsManager: AssetsManager) (state: State) =
+        let updateBody assetsManager =
             let assetLabel =
                 match state.Wolf.BodyPos with
                 | WolfBodyPos.Left ->
@@ -293,7 +291,7 @@ module GraphicsSystem =
 
             visible assetLabel assetsManager
 
-        let assetsManager =
+        let updateHands assetsManager =
             let assetLabel =
                 let wolf = state.Wolf
                 match wolf.BodyPos, wolf.HandPos with
@@ -309,91 +307,108 @@ module GraphicsSystem =
 
             visible assetLabel assetsManager
 
-        let assetsManager =
-            let draw assetId displayNumber assetsManager =
-                assetsManager
-                |> AssetsManager.update assetId (fun asset ->
-                    (state.CatchedEggsCount / (pown 10 (displayNumber - 1))) % 10
-                    |> SegmentDisplay.ofDigit
-                    |> SegmentDisplay.toAssetNames
-                    |> Array.fold
-                        (fun st assetId ->
-                            st
-                            |> Asset.updateGroup assetId (Asset.map Sprite.visible)
-                        )
-                        asset
-                )
+        assetsManager
+        |> updateBody
+        |> updateHands
+
+    let updateCachedEggsCount (assetsManager: AssetsManager) (state: State) =
+        let draw assetId displayNumber assetsManager =
             assetsManager
-            |> draw AssetLabels.digit1 1
-            |> draw AssetLabels.digit2 2
-            |> draw AssetLabels.digit3 3
-            |> draw AssetLabels.digit4 4
+            |> AssetsManager.update assetId (fun asset ->
+                (state.CatchedEggsCount / (pown 10 (displayNumber - 1))) % 10
+                |> SegmentDisplay.ofDigit
+                |> SegmentDisplay.toAssetNames
+                |> Array.fold
+                    (fun st assetId ->
+                        st
+                        |> Asset.updateGroup assetId (Asset.map Sprite.visible)
+                    )
+                    asset
+            )
 
-        let assetsManager =
-            let draw assetId assetsManager =
-                assetsManager
-                |> AssetsManager.update assetId (
-                    Asset.map Sprite.visible
-                )
+        assetsManager
+        |> draw AssetLabels.digit1 1
+        |> draw AssetLabels.digit2 2
+        |> draw AssetLabels.digit3 3
+        |> draw AssetLabels.digit4 4
 
-            let assetsIds =
-                [|
-                    AssetLabels.brokenEgg1
-                    AssetLabels.brokenEgg2
-                    AssetLabels.brokenEgg3
-                |]
+    let updateBrokenEggsBar assetsManager state =
+        let draw assetId assetsManager =
+            assetsManager
+            |> AssetsManager.update assetId (
+                Asset.map Sprite.visible
+            )
 
-            state.BrokenEggsBar
-            |> BrokenEggsBar.foldBack
-                (fun (i, assetsManager) brokenEggIcon ->
-                    if i < assetsIds.Length then
-                        let assetsManager =
-                            match brokenEggIcon with
-                            | BrokenEggIcon.Full ->
+        let assetsIds =
+            [|
+                AssetLabels.brokenEgg1
+                AssetLabels.brokenEgg2
+                AssetLabels.brokenEgg3
+            |]
+
+        state.BrokenEggsBar
+        |> BrokenEggsBar.foldBack
+            (fun (i, assetsManager) brokenEggIcon ->
+                if i < assetsIds.Length then
+                    let assetsManager =
+                        match brokenEggIcon with
+                        | BrokenEggIcon.Full ->
+                            let assetId = assetsIds.[i]
+                            draw assetId assetsManager
+                        | BrokenEggIcon.Half x ->
+                            if HalfBrokenEggIcon.isHidden x then
+                                assetsManager
+                            else
                                 let assetId = assetsIds.[i]
                                 draw assetId assetsManager
-                            | BrokenEggIcon.Half x ->
-                                if HalfBrokenEggIcon.isHidden x then
-                                    assetsManager
-                                else
-                                    let assetId = assetsIds.[i]
-                                    draw assetId assetsManager
-                        (i + 1, assetsManager)
-                    else
-                        (i + 1, assetsManager)
-                )
-                (0, assetsManager)
-            |> snd
+                    (i + 1, assetsManager)
+                else
+                    (i + 1, assetsManager)
+            )
+            (0, assetsManager)
+        |> snd
 
-        let assetsManager =
-            let visible assetLabel assetsManager =
-                AssetsManager.update assetLabel (Asset.map Sprite.visible) assetsManager
+    let updateBunny (assetsManager: AssetsManager) (state: State) =
+        match state.Bunny.Status with
+        | BunnyStatus.Active ->
+            visible AssetLabels.bunny assetsManager
+        | _ ->
+            assetsManager
 
-            match state.Bunny.Status with
-            | BunnyStatus.Active ->
-                visible AssetLabels.bunny assetsManager
-            | _ ->
-                assetsManager
+    let updateHatchedChick (assetsManager: AssetsManager) (state: State) =
+        match state.HatchedChick with
+        | None ->
+            assetsManager
+        | Some hatchedChick ->
+            let assetGroupId =
+                match hatchedChick.Direction with
+                | HatchedChickDirection.Left ->
+                    AssetLabels.leftChickens
+                | HatchedChickDirection.Right ->
+                    AssetLabels.rightChickens
+                | dir ->
+                    failwithf "not found asset group ID for \"%A\" direction" dir
 
-        let assetsManager =
-            match state.HatchedChick with
-            | None ->
-                assetsManager
-            | Some hatchedChick ->
-                let assetGroupId =
-                    match hatchedChick.Direction with
-                    | HatchedChickDirection.Left ->
-                        AssetLabels.leftChickens
-                    | HatchedChickDirection.Right ->
-                        AssetLabels.rightChickens
-                    | dir ->
-                        failwithf "not found asset group ID for \"%A\" direction" dir
+            assetsManager
+            |> AssetsManager.update assetGroupId (fun asset ->
+                let id = string (int hatchedChick.Pos)
+                asset
+                |> Asset.updateGroup id (Asset.map Sprite.visible)
+            )
 
-                assetsManager
-                |> AssetsManager.update assetGroupId (fun asset ->
-                    let id = string (int hatchedChick.Pos)
-                    asset
-                    |> Asset.updateGroup id (Asset.map Sprite.visible)
-                )
+    let update (assetsManager: AssetsManager) (state: State) =
+        let assetsManager = AssetsManager.hideAll assetsManager
 
-        assetsManager, state
+        let f fn assetsManager =
+            fn assetsManager state
+
+        assetsManager
+        |> f updateEggsContainer
+        |> f updateBrokenEgg
+        |> f updateWolf
+        |> f updateCachedEggsCount
+        |> f updateBrokenEggsBar
+        |> f updateBunny
+        |> f updateHatchedChick
+        |> fun assetsManager ->
+            assetsManager, state
