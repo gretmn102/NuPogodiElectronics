@@ -124,6 +124,12 @@ module PhysicsSystem =
                             { state with
                                 Status = GameStatus.GameOver
                             }
+                            |> State.mapBunny (fun bunny ->
+                                bunny
+                                |> Bunny.disableChangesStatus
+                                |> Bunny.visible
+                                |> Bunny.startRingingBell
+                            )
                 state
             else
                 state
@@ -179,30 +185,69 @@ module PhysicsSystem =
     let updateBunny (dt: float) (state: State) =
         let bunny = state.Bunny
 
-        let f statusChangeTimeLeft newStatus =
-            let timeLeft = bunny.StatusChangeTimeLeft
-            if bunny.StatusChangeTimeLeft > 0 then
+        let updateChangesStatus state =
+            let f statusChangeTimeLeft newStatus =
+                let timeLeft = bunny.StatusChangeTimeLeft
+                if bunny.StatusChangeTimeLeft > 0 then
+                    state
+                    |> State.mapBunny (fun state ->
+                        { state with
+                            StatusChangeTimeLeft = timeLeft - dt
+                        }
+                    )
+                else
+                    state
+                    |> State.mapBunny (fun state ->
+                        { state with
+                            StatusChangeTimeLeft = statusChangeTimeLeft
+                            Status = newStatus
+                        }
+                    )
+
+            if bunny.ChangesStatusDisabled then
                 state
-                |> State.mapBunny (fun state ->
-                    { state with
-                        StatusChangeTimeLeft = timeLeft - dt
-                    }
-                )
             else
+                match bunny.Status with
+                | BunnyStatus.Ready ->
+                    f bunny.ActiveTime BunnyStatus.Active
+                | BunnyStatus.Active ->
+                    f bunny.CooldownTime BunnyStatus.Cooldown
+                | BunnyStatus.Cooldown ->
+                    f bunny.AutoActivateTime BunnyStatus.Ready
+
+        let updateBellRing (state: State) =
+            let bunny = state.Bunny
+            match bunny.BellingRing with
+            | None ->
                 state
-                |> State.mapBunny (fun state ->
-                    { state with
-                        StatusChangeTimeLeft = statusChangeTimeLeft
-                        Status = newStatus
-                    }
-                )
-        match bunny.Status with
-        | BunnyStatus.Ready ->
-            f bunny.ActiveTime BunnyStatus.Active
-        | BunnyStatus.Active ->
-            f bunny.CooldownTime BunnyStatus.Cooldown
-        | BunnyStatus.Cooldown ->
-            f bunny.AutoActivateTime BunnyStatus.Ready
+            | Some timer ->
+                let bunny =
+                    if Timer.isElapsed timer then
+                        let newHandPos =
+                            match bunny.HandPos with
+                            | Some x ->
+                                BunnyHandPos.switch x
+                            | None ->
+                                BunnyHandPos.Top
+                        { bunny with
+                            HandPos = Some newHandPos
+                            BellingRing =
+                                Timer.reset timer
+                                |> Some
+                        }
+                    else
+                        { bunny with
+                            BellingRing =
+                                Timer.update dt timer
+                                |> Some
+                        }
+                { state with
+                    Bunny = bunny
+                }
+
+        state
+        |> updateChangesStatus
+        |> updateBellRing
 
     let updateHatchedChick (dt: float) (state: State) =
         let hatchedChick = state.HatchedChick
@@ -369,11 +414,28 @@ module GraphicsSystem =
         |> snd
 
     let updateBunny (assetsManager: AssetsManager) (state: State) =
-        match state.Bunny.Status with
-        | BunnyStatus.Active ->
-            visible AssetLabels.bunny assetsManager
-        | _ ->
+        let bunny = state.Bunny
+        let assetsManager =
+            match bunny.Status with
+            | BunnyStatus.Active ->
+                visible AssetLabels.bunny assetsManager
+            | _ ->
+                assetsManager
+
+        match bunny.HandPos with
+        | None ->
             assetsManager
+        | Some bunnyHandPos ->
+            let assetId =
+                match bunnyHandPos with
+                | BunnyHandPos.Top ->
+                    AssetLabels.bunnyTopHandWithBell
+                | BunnyHandPos.Bottom ->
+                    AssetLabels.bunnyBottomHandWithBell
+                | x ->
+                    failwithf "%A not implemented yet!" x
+
+            visible assetId assetsManager
 
     let updateHatchedChick (assetsManager: AssetsManager) (state: State) =
         match state.HatchedChick with

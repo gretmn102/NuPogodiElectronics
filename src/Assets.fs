@@ -217,6 +217,8 @@ module AssetLabels =
     let rec bunny = nameof bunny
     let rec leftChickens = nameof leftChickens
     let rec rightChickens = nameof rightChickens
+    let rec bunnyTopHandWithBell = nameof bunnyTopHandWithBell
+    let rec bunnyBottomHandWithBell = nameof bunnyBottomHandWithBell
 
 type AssetsManager =
     {
@@ -313,6 +315,8 @@ module AssetsManager =
                     load AssetLabels.bunny
                     loadChickens AssetLabels.leftChickens
                     loadChickens AssetLabels.rightChickens
+                    load AssetLabels.bunnyTopHandWithBell
+                    load AssetLabels.bunnyBottomHandWithBell
                 ]
                 |> Map.ofList
         }

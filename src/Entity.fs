@@ -86,14 +86,60 @@ type BunnyStatus =
     | Cooldown
     | Ready
 
+type BunnyHandPos =
+    | Top = 0
+    | Bottom = 1
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module BunnyHandPos =
+    let switch = function
+        | BunnyHandPos.Top ->
+            BunnyHandPos.Bottom
+        | BunnyHandPos.Bottom ->
+            BunnyHandPos.Top
+        | x ->
+            failwithf "%A not implemented yet!" x
+
+type Timer =
+    {
+        Interval: float
+        TimeLeft: float
+    }
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
+module Timer =
+    let create interval =
+        {
+            Interval = interval
+            TimeLeft = interval
+        }
+
+    let isElapsed (timerComponent: Timer) =
+        not (timerComponent.TimeLeft > 0)
+
+    let reset (timerComponent: Timer) =
+        { timerComponent with
+            TimeLeft = timerComponent.Interval
+        }
+
+    let update (dt: float) (timerComponent: Timer) =
+        { timerComponent with
+            TimeLeft = timerComponent.TimeLeft - dt
+        }
+
 type Bunny =
     {
         Status: BunnyStatus
         CooldownTime: float
         ActiveTime: float
         AutoActivateTime: float
+        ChangesStatusDisabled: bool
 
         StatusChangeTimeLeft: float
+
+        HandPos: BunnyHandPos option
+        BellingRing: Timer option
+        BellingRingInterval: float
     }
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 [<RequireQualifiedAccess>]
@@ -104,9 +150,35 @@ module Bunny =
             CooldownTime = 1.0 * 1000.0
             ActiveTime = 3.0 * 1000.0
             AutoActivateTime = 10.0 * 1000.0
+            ChangesStatusDisabled = false
 
             StatusChangeTimeLeft = 0.0
+
+            HandPos = None
+            BellingRing = None
+            BellingRingInterval = 100.0
         }
+
+    let visible (bunny: Bunny) =
+        { bunny with
+            Status = BunnyStatus.Active
+            StatusChangeTimeLeft = bunny.ActiveTime
+        }
+
+    let disableChangesStatus (bunny: Bunny) =
+        { bunny with
+            ChangesStatusDisabled = true
+        }
+
+    let startRingingBell (bunny: Bunny) =
+        { bunny with
+            BellingRing =
+                Timer.create bunny.BellingRingInterval
+                |> Some
+        }
+
+    let isRingingBell (bunny: Bunny) =
+        Option.isSome bunny.BellingRing
 
 type HatchedChickDirection =
     | Left = 0

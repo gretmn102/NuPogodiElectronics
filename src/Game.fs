@@ -10,11 +10,16 @@ let update (dt: float) (assetsManager: AssetsManager) (state: State) =
         |> GraphicsSystem.update assetsManager
 
     | GameStatus.GameOver ->
-        let state =
-            { state with
-                Status = GameStatus.HasNotStartedYet
-            }
-        assetsManager, state
+        if Ui.isStartGameAButtonPressed then
+            let state =
+                { state with
+                    Status = GameStatus.HasNotStartedYet
+                }
+            assetsManager, state
+        else
+            state
+            |> PhysicsSystem.updateBunny dt
+            |> GraphicsSystem.update assetsManager
 
     | GameStatus.HasNotStartedYet ->
         if Ui.isStartGameAButtonPressed then
