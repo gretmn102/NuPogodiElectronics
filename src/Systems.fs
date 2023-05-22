@@ -44,121 +44,126 @@ module PhysicsSystem =
     let r = System.Random()
 
     let updateEggs (dt: float) (state: State) =
+        let updateEgg (state: State) (egg: Egg) =
+            let newPos = egg.Pos + 1
+            if newPos > Egg.maxPos then
+                let brokenEggPos =
+                    let wolf = state.Wolf
+                    match egg.Gutter, wolf.BodyPos, wolf.HandPos with
+                    | EggGutter.LeftTop, WolfBodyPos.Left, WolfHandPos.Top ->
+                        None
+                    | EggGutter.LeftTop, _, _ ->
+                        Some BrokenEggPos.Left
+                    | EggGutter.LeftBottom, WolfBodyPos.Left, WolfHandPos.Bottom ->
+                        None
+                    | EggGutter.LeftBottom, _, _ ->
+                        Some BrokenEggPos.Left
+                    | EggGutter.RightTop, WolfBodyPos.Right, WolfHandPos.Top ->
+                        None
+                    | EggGutter.RightTop, _, _ ->
+                        Some BrokenEggPos.Right
+                    | EggGutter.RightBottom, WolfBodyPos.Right, WolfHandPos.Bottom ->
+                        None
+                    | EggGutter.RightBottom, _, _ ->
+                        Some BrokenEggPos.Right
+                    | x -> failwithf "not found EggGutter.%A" x
+
+                let state =
+                    { state with
+                        BrokenEgg = brokenEggPos
+                    }
+
+                let state =
+                    match brokenEggPos with
+                    | Some pos ->
+                        let dir =
+                            match pos with
+                            | BrokenEggPos.Left ->
+                                HatchedChickDirection.Left
+                            | BrokenEggPos.Right ->
+                                HatchedChickDirection.Right
+                            | pos ->
+                                failwithf "can't convert %A" pos
+
+                        match state.Bunny.Status with
+                        | BunnyStatus.Active ->
+                            { state with
+                                HatchedChick =
+                                    Some (HatchedChick.create dir)
+                            }
+                        | _ ->
+                            state
+                    | None ->
+                        state
+
+                let state =
+                    match brokenEggPos with
+                    | None ->
+                        { state with
+                            CatchedEggsCount =
+                                state.CatchedEggsCount + 1
+                        }
+                    | Some _ ->
+                        let brokenEggValue =
+                            match state.Bunny.Status with
+                            | BunnyStatus.Active ->
+                                BrokenEggIcon.Half (HalfBrokenEggIcon.create ())
+                            | _ ->
+                                BrokenEggIcon.Full
+
+                        let brokenEggsBar = BrokenEggsBar.add brokenEggValue state.BrokenEggsBar
+                        let state =
+                            { state with
+                                BrokenEggsBar =
+                                    brokenEggsBar
+                            }
+
+                        if brokenEggsBar.Length < 3 then
+                            state
+                        else
+                            { state with
+                                Status = GameStatus.GameOver
+                            }
+                state
+            else
+                state
+                |> State.mapEggsContainer (fun state ->
+                    { state with
+                        Eggs =
+                            let egg =
+                                { egg with
+                                    Pos = newPos
+                                }
+                            Map.add egg.Id egg state.Eggs
+                    }
+                )
+
         let eggsContainer = state.EggsContainer
         if eggsContainer.TimeAcc > eggsContainer.Cooldown then
             let state =
-                eggsContainer.Eggs
-                |> Map.fold
-                    (fun state id egg ->
-                        let newPos = egg.Pos + 1
-                        if newPos > Egg.maxPos then
-                            let brokenEggPos =
-                                let wolf = state.Wolf
-                                match egg.Gutter, wolf.BodyPos, wolf.HandPos with
-                                | EggGutter.LeftTop, WolfBodyPos.Left, WolfHandPos.Top ->
-                                    None
-                                | EggGutter.LeftTop, _, _ ->
-                                    Some BrokenEggPos.Left
-                                | EggGutter.LeftBottom, WolfBodyPos.Left, WolfHandPos.Bottom ->
-                                    None
-                                | EggGutter.LeftBottom, _, _ ->
-                                    Some BrokenEggPos.Left
-                                | EggGutter.RightTop, WolfBodyPos.Right, WolfHandPos.Top ->
-                                    None
-                                | EggGutter.RightTop, _, _ ->
-                                    Some BrokenEggPos.Right
-                                | EggGutter.RightBottom, WolfBodyPos.Right, WolfHandPos.Bottom ->
-                                    None
-                                | EggGutter.RightBottom, _, _ ->
-                                    Some BrokenEggPos.Right
-                                | x -> failwithf "not found EggGutter.%A" x
-
-                            let state =
-                                { state with
-                                    BrokenEgg = brokenEggPos
-                                }
-
-                            let state =
-                                match brokenEggPos with
-                                | Some pos ->
-                                    let dir =
-                                        match pos with
-                                        | BrokenEggPos.Left ->
-                                            HatchedChickDirection.Left
-                                        | BrokenEggPos.Right ->
-                                            HatchedChickDirection.Right
-                                        | pos ->
-                                            failwithf "can't convert %A" pos
-
-                                    match state.Bunny.Status with
-                                    | BunnyStatus.Active ->
-                                        { state with
-                                            HatchedChick =
-                                                Some (HatchedChick.create dir)
-                                        }
-                                    | _ ->
-                                        state
-                                | None ->
-                                    state
-
-                            let state =
-                                match brokenEggPos with
-                                | None ->
-                                    { state with
-                                        CatchedEggsCount =
-                                            state.CatchedEggsCount + 1
-                                    }
-                                | Some _ ->
-                                    let brokenEggValue =
-                                        match state.Bunny.Status with
-                                        | BunnyStatus.Active ->
-                                            BrokenEggIcon.Half (HalfBrokenEggIcon.create ())
-                                        | _ ->
-                                            BrokenEggIcon.Full
-
-                                    let brokenEggsBar = BrokenEggsBar.add brokenEggValue state.BrokenEggsBar
-                                    let state =
-                                        { state with
-                                            BrokenEggsBar =
-                                                brokenEggsBar
-                                        }
-                                    if brokenEggsBar.Length < 3 then
-                                        state
-                                    else
-                                        { state with
-                                            Status = GameStatus.GameOver
-                                        }
-                            state
-                        else
-                            state
-                            |> State.mapEggsContainer (fun state ->
-                                { state with
-                                    Eggs =
-                                        let egg =
-                                            { egg with
-                                                Pos = newPos
-                                            }
-                                        Map.add id egg state.Eggs
-                                }
-                            )
-                    )
-
-                    ({ state with
+                let initState =
+                    { state with
                         BrokenEgg = None
                     }
                     |> State.mapEggsContainer (fun state ->
                         { state with
                             Eggs = Map.empty
                         }
-                    ))
+                    )
+
+                eggsContainer.Eggs
+                |> Map.fold
+                    (fun state _ egg ->
+                        updateEgg state egg
+                    )
+                    initState
 
             state
             |> State.mapEggsContainer (fun state ->
                 { state with
                     Eggs =
                         let newEgg =
-                            Egg.create EggGutter.all.[r.Next(0, 4)]
-
+                            Egg.create EggGutter.all.[r.Next(0, EggGutter.all.Length)]
                         Map.add newEgg.Id newEgg state.Eggs
                     TimeAcc = 0
                 }
