@@ -219,6 +219,7 @@ module AssetLabels =
     let rec rightChickens = nameof rightChickens
     let rec bunnyTopHandWithBell = nameof bunnyTopHandWithBell
     let rec bunnyBottomHandWithBell = nameof bunnyBottomHandWithBell
+    let rec fullScreenButton = nameof fullScreenButton
 
 type AssetsManager =
     {
@@ -317,6 +318,7 @@ module AssetsManager =
                     loadChickens AssetLabels.rightChickens
                     load AssetLabels.bunnyTopHandWithBell
                     load AssetLabels.bunnyBottomHandWithBell
+                    loadVisibleLock AssetLabels.fullScreenButton
                 ]
                 |> Map.ofList
         }

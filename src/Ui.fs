@@ -1,6 +1,7 @@
 module NuPogodiElectronics.Ui
 
 let mutable isStartGameAButtonPressed = false
+let mutable isFullScreenPressed = false
 
 let bind assetId binding assetsManager =
     assetsManager
@@ -53,9 +54,23 @@ let initStartGameAButton (assetsManager: AssetsManager) =
         isStartGameAButtonPressed <- isPressed
     )
 
+let initFullScreenButton (assetsManager: AssetsManager) =
+    assetsManager
+    |> bind AssetLabels.fullScreenButton (fun isPressed ->
+        let document = Browser.Dom.document
+        if document.fullscreenEnabled && isPressed then
+            if isNull document.fullscreenElement then
+                assetsManager.Root.requestFullscreen ()
+            else
+                document.exitFullscreen ()
+    )
+
 let init (assetsManager: AssetsManager) =
     assetsManager
     |> initKeyButtons
 
     assetsManager
     |> initStartGameAButton
+
+    assetsManager
+    |> initFullScreenButton
